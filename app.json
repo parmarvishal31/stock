@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "stock",
-    "slug": "stock",
+    "name": "FarmManager",
+    "slug": "FarmManager",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.vishalparmar31.PomegranateFarm"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +38,18 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8cd47193-7e78-4c6e-9ba2-b3f089d14fc2"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8cd47193-7e78-4c6e-9ba2-b3f089d14fc2"
     }
   }
 }
