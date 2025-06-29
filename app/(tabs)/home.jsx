@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import {
   addDoc,
   collection,
@@ -46,7 +45,6 @@ export default function Home() {
   const [searchText, setSearchText] = useState("");
 
   const isDark = useSelector((state) => state.user.isDark);
-  const router = useRouter();
 
   const bgColor = isDark ? "#2b2b2b" : "#f5f5f5";
   const cardColor = isDark ? "#3b3b3b" : "#ffffff";
@@ -195,24 +193,6 @@ export default function Home() {
             paddingHorizontal: 16,
           }}
         >
-          <View
-            style={{ backgroundColor: cardColor, borderColor }}
-            className="w-full rounded-2xl shadow-lg p-4 mt-6 border mb-3"
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fb9b33" />
-            ) : (
-              <Text
-                className="text-xl font-bold text-center"
-                style={{ color: isDark ? "#fff" : "#000" }}
-              >
-                <Text style={{ color: "#fb9b33" }}>
-                  👨‍🌾 Welcome to {userName}
-                </Text>
-              </Text>
-            )}
-          </View>
-
           {/* Search Input */}
           <View
             className="mb-3 flex-row items-center"

@@ -1,6 +1,16 @@
 import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import { Formik } from "formik";
 import {
   Alert,
@@ -37,19 +47,45 @@ export default function SignUp() {
 
   const handleSignUp = async (values, { setSubmitting }) => {
     try {
+      // Check for duplicate phone number
+      const q = query(
+        collection(db, "users"),
+        where("phone", "==", values.phone)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        Alert.alert(
+          "Phone number already in use",
+          "Please use a different phone number."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // Create user with Firebase Auth
       const { user } = await createUserWithEmailAndPassword(
         auth,
         values.email,
         values.password
       );
 
+      // Send email verification
+      await sendEmailVerification(user);
+
+      // Save user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: values.name,
         email: values.email,
         phone: values.phone,
         role: "farmer",
-        isDark: false, // default theme
+        isDark: false,
       });
+
+      Alert.alert(
+        "Verify Email",
+        "A verification link has been sent to your email. Please verify your email before signing in."
+      );
 
       router.push("/signin");
     } catch (error) {

@@ -34,7 +34,7 @@ export default function Index() {
             dispatch(setTheme(userData.isDark ?? false));
 
             // ✅ Navigate to home
-            router.replace("/(tabs)/home");
+            router.replace("/(tabs)");
           }
         } catch (error) {
           console.error("Error fetching user data:", error);

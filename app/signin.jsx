@@ -1,5 +1,9 @@
+import * as Linking from "expo-linking"; // for opening email app
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useState } from "react";
 import {
@@ -10,7 +14,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../assets/Colors";
@@ -18,47 +21,102 @@ import { auth, db } from "../firebase";
 
 export default function SignIn() {
   const router = useRouter();
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState(""); // email or phone
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
-    if (!phone || !password) {
-      Alert.alert("Missing Fields", "Please enter both phone and password.");
+    if (!identifier || !password) {
+      Alert.alert(
+        "Missing Fields",
+        "Please enter your email/phone and password."
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("phone", "==", phone));
-      const snapshot = await getDocs(q);
+      let emailToUse = identifier;
 
-      if (snapshot.empty) {
-        Alert.alert("Phone Error", "No account found with this phone number.");
-        return;
+      // If input is a phone number, find email from Firestore
+      const isPhone = /^[0-9]{10}$/.test(identifier);
+      if (isPhone) {
+        const q = query(
+          collection(db, "users"),
+          where("phone", "==", identifier)
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          Alert.alert(
+            "Sign In Failed",
+            "No user found with this phone number."
+          );
+          setLoading(false);
+          return;
+        }
+
+        const userData = snapshot.docs[0].data();
+        emailToUse = userData.email;
       }
 
-      const userDoc = snapshot.docs[0].data();
-      const email = userDoc.email;
+      const { user } = await signInWithEmailAndPassword(
+        auth,
+        emailToUse,
+        password
+      );
 
-      await signInWithEmailAndPassword(auth, email, password);
+      // Check if email is verified
+      await user.reload(); // refresh data
+      if (!user.emailVerified) {
+        Alert.alert(
+          "Email Not Verified",
+          "Please verify your email before continuing.",
+          [
+            {
+              text: "Resend Email",
+              onPress: async () => {
+                try {
+                  await sendEmailVerification(user);
+                  Alert.alert(
+                    "Verification Sent",
+                    "Check your inbox or spam folder.",
+                    [
+                      {
+                        text: "Open Email App",
+                        onPress: () => {
+                          Linking.openURL("mailto:");
+                        },
+                      },
+                      { text: "OK", style: "cancel" },
+                    ]
+                  );
+                } catch (e) {
+                  console.error("Resend Error:", e);
+                  Alert.alert("Error", "Failed to resend verification email.");
+                }
+              },
+            },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+        return;
+      }
 
       router.replace("/");
     } catch (error) {
       console.error("SignIn Error:", error);
 
       let message = "Something went wrong. Please try again.";
-
       if (error.code === "auth/user-not-found") {
         message = "No user found with these credentials.";
       } else if (error.code === "auth/wrong-password") {
-        message = "Incorrect password. Please try again.";
+        message = "Incorrect password.";
       } else if (error.code === "auth/too-many-requests") {
-        message = "Too many attempts. Please try again later.";
+        message = "Too many attempts. Please try later.";
       } else if (error.code === "auth/invalid-email") {
-        message = "The email format is invalid.";
+        message = "Invalid email format.";
       }
 
       Alert.alert("Sign In Failed", message);
@@ -93,14 +151,15 @@ export default function SignIn() {
           Manage your schedule and fertilizer stock for easy farming.
         </Text>
 
-        {/* Phone Input */}
+        {/* Email or Phone Input */}
         <TextInput
           className="rounded-lg p-3 mb-4 w-full"
-          placeholder="Phone"
+          placeholder="Email or Phone"
           placeholderTextColor="#999"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
+          value={identifier}
+          onChangeText={setIdentifier}
+          keyboardType="email-address"
+          autoCapitalize="none"
           style={{
             backgroundColor: "white",
             color: "black",
@@ -148,11 +207,6 @@ export default function SignIn() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Footer - Powered by */}
-      <View className="absolute bottom-2 w-full items-center">
-        <Text className="text-gray-400 text-xs">Powered by Vishal Parmar</Text>
-      </View>
     </SafeAreaView>
   );
 }

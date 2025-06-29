@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import { auth, db } from "../../firebase";
-import { setTheme, setUser } from "../../redux/userSlice";
+import { auth, db } from "../../../firebase";
+import { setTheme, setUser } from "../../../redux/userSlice";
 
 export default function Tab() {
   const router = useRouter();
@@ -107,7 +107,7 @@ export default function Tab() {
           style={{ flex: 1, backgroundColor }}
           contentContainerStyle={{
             paddingVertical: 40,
-            paddingBottom: 80,
+            paddingBottom: 100,
           }}
         >
           {loading ? (
@@ -115,13 +115,10 @@ export default function Tab() {
           ) : (
             <>
               {/* Logo */}
-              <View className="items-center mb-6">
+              <View style={{ alignItems: "center", marginBottom: 24 }}>
                 <Image
-                  source={require("../../assets/images/user.png")}
-                  style={{
-                    width: 150,
-                    height: 150,
-                  }}
+                  source={require("../../../assets/images/user.png")}
+                  style={{ width: 150, height: 150 }}
                 />
               </View>
 
@@ -196,7 +193,7 @@ export default function Tab() {
                   </View>
                 </View>
 
-                {/* Buttons */}
+                {/* Buttons Inside Card */}
                 <View
                   style={{
                     flexDirection: "row",
@@ -204,7 +201,6 @@ export default function Tab() {
                     marginTop: 24,
                   }}
                 >
-                  {/* Logout Button */}
                   <TouchableOpacity
                     onPress={handleLogout}
                     style={{
@@ -214,6 +210,8 @@ export default function Tab() {
                       borderRadius: 10,
                       flexDirection: "row",
                       alignItems: "center",
+                      flex: 1,
+                      marginRight: 8,
                     }}
                   >
                     <Ionicons name="log-out-outline" size={18} color="#fff" />
@@ -228,7 +226,6 @@ export default function Tab() {
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Theme Toggle Button */}
                   <TouchableOpacity
                     onPress={toggleTheme}
                     style={{
@@ -238,6 +235,8 @@ export default function Tab() {
                       borderRadius: 10,
                       flexDirection: "row",
                       alignItems: "center",
+                      flex: 1,
+                      marginLeft: 8,
                     }}
                     disabled={themeLoading}
                   >
@@ -266,6 +265,67 @@ export default function Tab() {
                     )}
                   </TouchableOpacity>
                 </View>
+              </View>
+
+              {/* Grid Buttons Below Card */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  marginTop: 20,
+                  marginHorizontal: 20,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => router.push("/profile/createplot")}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#27ae60",
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 10,
+                  }}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontWeight: "600",
+                      fontSize: 16,
+                      marginLeft: 8,
+                    }}
+                  >
+                    Create Plot
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/profile/plots")}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#2980b9",
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: 10,
+                  }}
+                >
+                  <Ionicons name="eye-outline" size={20} color="#fff" />
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontWeight: "600",
+                      fontSize: 16,
+                      marginLeft: 8,
+                    }}
+                  >
+                    Show Plots
+                  </Text>
+                </TouchableOpacity>
               </View>
             </>
           )}
