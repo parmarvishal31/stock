@@ -5,7 +5,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
+  onSnapshot,
   updateDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -53,33 +53,32 @@ export default function Home() {
   const stockColor = isDark ? "#46f073" : "#08bd37";
 
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
 
-  const fetchUserData = async () => {
-    try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) return;
+    const userRef = doc(db, "users", uid);
+    const todosRef = collection(userRef, "todos");
 
-      const userDoc = await getDoc(doc(db, "users", uid));
+    // Get user name once
+    getDoc(userRef).then((userDoc) => {
       if (userDoc.exists()) {
         setUserName(userDoc.data().name || "User");
       }
+    });
 
-      const todosSnap = await getDocs(
-        collection(doc(db, "users", uid), "todos")
-      );
-      const todosList = todosSnap.docs.map((doc) => ({
+    // Real-time todos listener
+    const unsubscribe = onSnapshot(todosRef, (snapshot) => {
+      const todosList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       setTodos(todosList.reverse());
-    } catch (err) {
-      console.error(err);
-    } finally {
       setLoading(false);
-    }
-  };
+    });
+
+    // Cleanup on unmount
+    return () => unsubscribe();
+  }, []);
 
   const filteredTodos = todos.filter((item) =>
     item.name.toLowerCase().includes(searchText.toLowerCase())

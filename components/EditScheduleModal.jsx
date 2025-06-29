@@ -4,9 +4,11 @@ import { Picker } from "@react-native-picker/picker";
 import CheckBox from "expo-checkbox";
 import {
   Timestamp,
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   updateDoc,
 } from "firebase/firestore";
 import { Formik } from "formik";
@@ -68,36 +70,6 @@ const EditScheduleModal = ({ visible, schedule, onClose, onUpdate }) => {
       }
     );
 
-  const handleToggleComplete = async () => {
-    const uid = auth.currentUser?.uid;
-    if (!uid || !schedule.plotId || !schedule.id) return;
-
-    try {
-      const ref = doc(
-        db,
-        "users",
-        uid,
-        "plots",
-        schedule.plotId,
-        "schedules",
-        schedule.id
-      );
-      const newStatus = !isCompleted;
-      await updateDoc(ref, {
-        completed: newStatus,
-      });
-      setIsCompleted(newStatus);
-      Alert.alert(
-        newStatus ? "Marked as Complete" : "Marked as Uncomplete",
-        "Schedule updated successfully"
-      );
-      onUpdate();
-    } catch (e) {
-      Alert.alert("Error", "Failed to update completion status.");
-      console.error(e);
-    }
-  };
-
   const onChangeDate = (event, selectedDate) => {
     const currentDate = selectedDate || scheduleDate;
     setShowDatePicker(false);
@@ -114,6 +86,119 @@ const EditScheduleModal = ({ visible, schedule, onClose, onUpdate }) => {
     const num = parseFloat(value);
     if (isNaN(num)) return null;
     return unit === "kg" ? num : unit === "g" ? num / 1000 : null;
+  };
+
+  const handleToggleComplete = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || !schedule.plotId || !schedule.id) return;
+
+    const newStatus = !isCompleted;
+
+    try {
+      const ref = doc(
+        db,
+        "users",
+        uid,
+        "plots",
+        schedule.plotId,
+        "schedules",
+        schedule.id
+      );
+
+      const stockRef = collection(db, "users", uid, "todos");
+      const stockSnap = await getDocs(stockRef);
+      const stockData = {};
+      stockSnap.forEach((doc) => {
+        stockData[doc.data().name.toLowerCase()] = {
+          id: doc.id,
+          ...doc.data(),
+        };
+      });
+
+      const allItems = [
+        ...(schedule.sprayItems || []),
+        ...(schedule.dripItems || []),
+      ];
+
+      // ✅ 1. Pre-validate all items
+      for (const item of allItems) {
+        const itemName = item.name.toLowerCase();
+        const stock = stockData[itemName];
+        const qty = parseFloat(item.finalQty || item.quantity || 0);
+
+        if (!stock) {
+          throw new Error(`Item "${item.name}" not found in stock.`);
+        }
+
+        const remaining = parseFloat(stock.remaining || 0);
+        if (newStatus && remaining < qty) {
+          throw new Error(`Insufficient stock for "${item.name}".`);
+        }
+      }
+
+      // ✅ 2. If validation passed, proceed with batch updates
+      const batchUpdates = [];
+
+      const updateStockItem = (item, type, isDeduct) => {
+        const itemName = item.name.toLowerCase();
+        const stock = stockData[itemName];
+
+        const qty = parseFloat(item.finalQty || item.quantity || 0);
+        const currentRemaining = parseFloat(stock.remaining);
+        const currentUsed = parseFloat(stock.used);
+
+        const newRemaining = isDeduct
+          ? currentRemaining - qty
+          : currentRemaining + qty;
+        const newUsed = isDeduct ? currentUsed + qty : currentUsed - qty;
+
+        const stockDocRef = doc(db, "users", uid, "todos", stock.id);
+        batchUpdates.push(
+          updateDoc(stockDocRef, {
+            remaining: parseFloat(newRemaining.toFixed(1)),
+            used: parseFloat(newUsed.toFixed(1)),
+          })
+        );
+      };
+
+      if (newStatus) {
+        // Deduct stock
+        schedule.sprayItems?.forEach((item) =>
+          updateStockItem(item, "Spray", true)
+        );
+        schedule.dripItems?.forEach((item) =>
+          updateStockItem(item, "Drip", true)
+        );
+      } else {
+        // Restore stock
+        schedule.sprayItems?.forEach((item) =>
+          updateStockItem(item, "Spray", false)
+        );
+        schedule.dripItems?.forEach((item) =>
+          updateStockItem(item, "Drip", false)
+        );
+      }
+
+      await Promise.all(batchUpdates);
+
+      await updateDoc(ref, {
+        completed: newStatus,
+      });
+
+      setIsCompleted(newStatus);
+
+      Alert.alert(
+        newStatus ? "Marked as Complete" : "Marked as Uncomplete",
+        newStatus
+          ? "Schedule marked as complete and stock updated."
+          : "Schedule marked as incomplete and stock restored."
+      );
+
+      onUpdate();
+    } catch (e) {
+      Alert.alert("Error", e.message || "Failed to update completion status.");
+      console.error(e);
+    }
   };
 
   const handleUpdate = async (values, { setSubmitting }) => {
@@ -469,14 +554,6 @@ const EditScheduleModal = ({ visible, schedule, onClose, onUpdate }) => {
               >
                 <Text style={{ color: accentColor, fontSize: 16 }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDelete}
-                style={{ marginTop: 10, alignItems: "center" }}
-              >
-                <Text style={{ color: "red", fontSize: 16 }}>
-                  Delete Schedule
-                </Text>
-              </TouchableOpacity>
               <View>
                 <TouchableOpacity
                   onPress={handleToggleComplete}
@@ -495,6 +572,14 @@ const EditScheduleModal = ({ visible, schedule, onClose, onUpdate }) => {
                   </Text>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: "red", fontSize: 16 }}>
+                  Delete Schedule
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Add Fertilizer / Drip Modal */}
