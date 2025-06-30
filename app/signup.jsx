@@ -1,8 +1,5 @@
 import { useRouter } from "expo-router";
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   doc,
@@ -70,9 +67,6 @@ export default function SignUp() {
         values.password
       );
 
-      // Send email verification
-      await sendEmailVerification(user);
-
       // Save user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: values.name,
@@ -83,8 +77,8 @@ export default function SignUp() {
       });
 
       Alert.alert(
-        "Verify Email",
-        "A verification link has been sent to your email. Please verify your email before signing in."
+        "Account Created",
+        "Your account has been successfully created. You can now sign in."
       );
 
       router.push("/signin");

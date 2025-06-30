@@ -55,6 +55,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="farm"
+        options={{
+          title: "Farm",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="leaf" color={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

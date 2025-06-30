@@ -153,7 +153,6 @@ export default function UserSchedules() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Welcome Section */}
         <Text
           style={{
             color: textColor,
@@ -165,7 +164,6 @@ export default function UserSchedules() {
           👋 Welcome, {userName}
         </Text>
 
-        {/* Filters */}
         <FlatList
           data={filters}
           horizontal
@@ -199,7 +197,6 @@ export default function UserSchedules() {
           )}
         />
 
-        {/* Cards */}
         <View style={{ marginTop: 16 }}>
           {schedules.filtered.length === 0 ? (
             <Text
@@ -208,20 +205,57 @@ export default function UserSchedules() {
               No schedules found for "{filter}"
             </Text>
           ) : (
-            schedules.filtered.map((schedule) => (
-              <TouchableOpacity
-                key={schedule.id}
-                onPress={() => setSelectedSchedule(schedule)}
-              >
-                <ScheduleCard
-                  schedule={schedule}
-                  cardColor={cardColor}
-                  textColor={textColor}
-                  accentColor={accentColor}
-                  todos={todos}
-                />
-              </TouchableOpacity>
-            ))
+            // Dynamic stock logic here
+            (() => {
+              const stockMap = {};
+              todos.forEach((item) => {
+                stockMap[item.name.toLowerCase()] = item.remaining;
+              });
+
+              const sortedSchedules = [...schedules.filtered].sort(
+                (a, b) =>
+                  a.scheduleDate?.toDate?.() - b.scheduleDate?.toDate?.()
+              );
+
+              return sortedSchedules.map((schedule) => {
+                const snapshotStock = {};
+                const reduceStock = (items) => {
+                  items?.forEach((item) => {
+                    const key = item.name.toLowerCase();
+                    const required = parseFloat(item.finalQty || 0);
+                    const available = stockMap[key] ?? 0;
+
+                    snapshotStock[key] = available;
+                    stockMap[key] = Math.max(0, available - required);
+                  });
+                };
+
+                if (schedule.spray) reduceStock(schedule.sprayItems);
+                if (schedule.drip) reduceStock(schedule.dripItems);
+
+                const scheduleTodos = Object.entries(snapshotStock).map(
+                  ([name, remaining]) => ({
+                    name,
+                    remaining,
+                  })
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={schedule.id}
+                    onPress={() => setSelectedSchedule(schedule)}
+                  >
+                    <ScheduleCard
+                      schedule={schedule}
+                      cardColor={cardColor}
+                      textColor={textColor}
+                      accentColor={accentColor}
+                      todos={scheduleTodos}
+                    />
+                  </TouchableOpacity>
+                );
+              });
+            })()
           )}
         </View>
       </ScrollView>
